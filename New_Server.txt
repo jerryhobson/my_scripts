@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# Color codes
+
+YELLOW='\033[1;33m'
+CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+RED='\033[1;31m'
+WHITE='\033[1;37m'
+RESET='\033[0m'
+
+# Menu
+function show_menu() {
+    echo -e "${YELLOW}=============================="
+    echo -e "🛠️  Ubuntu Server Provisioning Toolkit"
+    echo -e "==============================${RESET}"
+    echo -e "${WHITE}1.${RESET} Update and upgrade OS"
+    echo -e "${WHITE}2.${RESET} Install Docker"
+    echo -e "${WHITE}3.${RESET} Install Docker Compose"
+    echo -e "${WHITE}4.${RESET} Show current OS version"
+    echo -e "${WHITE}5.${RESET} SSH hardening instructions"
+    echo -e "${WHITE}6.${RESET} Create a new sudo user"
+    echo -e "${WHITE}7.${RESET} Enable unattended upgrades"
+    echo -e "${WHITE}8.${RESET} Exit"
+    echo -e "${YELLOW}==============================${RESET}"
+    echo -ne "${WHITE}Choose an option [1-8]: ${RESET}"
+}
+
+# Update OS
+function update_os() {
+    echo -e "${CYAN}\n🔄 UPDATE & UPGRADE OS\n==============================${RESET}"
+    sudo apt update && sudo apt upgrade -y
+    echo -e "${GREEN}✅ OS update complete.${RESET}"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Install Docker
+function install_docker() {
+    echo -e "${CYAN}\n🐳 INSTALLING DOCKER\n==============================${RESET}"
+    sudo apt install -y docker.io
+    sudo systemctl enable docker
+    sudo systemctl start docker
+    echo -e "${GREEN}✅ Docker installed and running.${RESET}"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Install Docker Compose
+function install_docker_compose() {
+    echo -e "${CYAN}\n🧩 INSTALLING DOCKER COMPOSE\n==============================${RESET}"
+    sudo apt install -y docker-compose
+    echo -e "${GREEN}✅ Docker Compose installed.${RESET}"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Show OS version
+function show_os_version() {
+    echo -e "${CYAN}\n🧠 CURRENT OS VERSION\n==============================${RESET}"
+    lsb_release -a 2>/dev/null || cat /etc/os-release
+    echo -e "Kernel: $(uname -r)"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# SSH hardening instructions
+function ssh_hardening() {
+    echo -e "${CYAN}\n🔐 SSH HARDENING INSTRUCTIONS\n==============================${RESET}"
+    echo -e "${WHITE}To change the default SSH port:${RESET}"
+    echo -e "1. Edit the SSH config file:\n   ${WHITE}sudo nano /etc/ssh/sshd_config${RESET}"
+    echo -e "2. Find the line:\n   ${WHITE}#Port 22${RESET}"
+    echo -e "3. Uncomment and change to a non-standard port (e.g. 2222):\n   ${WHITE}Port 2222${RESET}"
+    echo -e "4. Save and exit (Ctrl+O, Enter, Ctrl+X)"
+    echo -e "5. Restart SSH:\n   ${WHITE}sudo systemctl restart ssh${RESET}"
+    echo -e "6. Update firewall:\n   ${WHITE}sudo ufw allow 2222/tcp${RESET}"
+    echo -e "${GREEN}✅ SSH port changed. Test your new connection before closing your session!${RESET}"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Create sudo user
+function create_sudo_user() {
+    echo -e "${CYAN}\n👤 CREATE NEW SUDO USER\n==============================${RESET}"
+    read -p "Enter the new username: " username
+
+    if id "$username" &>/dev/null; then
+        echo -e "${RED}⚠️  User '$username' already exists.${RESET}"
+    else
+        adduser "$username"
+        usermod -aG sudo "$username"
+        echo -e "${GREEN}✅ User '$username' created and added to sudo group.${RESET}"
+    fi
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Enable unattended upgrades
+function enable_unattended_upgrades() {
+    echo -e "${CYAN}\n🔄 ENABLE UNATTENDED UPGRADES\n==============================${RESET}"
+    sudo apt install -y unattended-upgrades
+    sudo dpkg-reconfigure -plow unattended-upgrades
+    echo -e "${GREEN}✅ Unattended upgrades configured.${RESET}"
+    echo -e "${CYAN}==============================\n${RESET}"
+}
+
+# Main loop
+while true; do
+    show_menu
+    read choice
+    clear
+    case $choice in
+        1) update_os ;;
+        2) install_docker ;;
+        3) install_docker_compose ;;
+        4) show_os_version ;;
+        5) ssh_hardening ;;
+        6) create_sudo_user ;;
+        7) enable_unattended_upgrades ;;
+        8) echo -e "${GREEN}👋 Exiting Ubuntu Server Toolkit.${RESET}"; exit 0 ;;
+        *) echo -e "${RED}❌ Invalid option. Try again.${RESET}" ;;
+    esac
+    echo ""
+done
