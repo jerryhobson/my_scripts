@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# Docker Container Tools Menu
+clear
+function show_menu() {
+    clear
+    echo "=============================="
+    echo "🛠️  Docker Container Tools"
+    echo "=============================="
+    echo "1. Check for outdated containers"
+    echo "2. Update all outdated containers"
+    echo "3. Exit"
+    echo "=============================="
+    echo -n "Choose an option [1-3]: "
+}
+
+# Check for outdated containers
+function check_outdated() {
+    clear
+    echo "🔍 Checking for outdated containers..."
+    containers=$(docker ps --format '{{.ID}} {{.Image}}')
+    outdated=()
+
+    while read -r container_id image; do
+        echo "📦 Container: $container_id | Image: $image"
+        current_image_id=$(docker inspect --format='{{.Image}}' "$container_id")
+
+        if [[ "$image" =~ ^[0-9a-f]{12}$ ]]; then
+            echo "⏭️  Skipping pull for image ID: $image (no tag available)"
+            latest_image_id="$current_image_id"
+        else
+            docker pull "$image" > /dev/null 2>&1
+            latest_image_id=$(docker inspect --format='{{.Id}}' "$image")
+        fi
+
+        if [ "$current_image_id" != "$latest_image_id" ]; then
+            echo "⚠️  Outdated: $container_id is not using the latest image."
+            outdated+=("$container_id:$image")
+        else
+            echo "✅ Up to date."
+        fi
+        echo "--------------------------------------"
+    done <<< "$containers"
+
+    if [ ${#outdated[@]} -eq 0 ]; then
+        echo "🎉 All containers are up to date!"
+    else
+        echo "⚠️  ${#outdated[@]} container(s) are outdated."
+    fi
+}
+
+# Update outdated containers
+function update_containers() {
+    clear
+    echo "🔄 Updating outdated containers..."
+    containers=$(docker ps --format '{{.ID}} {{.Image}}')
+
+    while read -r container_id image; do
+        current_image_id=$(docker inspect --format='{{.Image}}' "$container_id")
+
+        if [[ "$image" =~ ^[0-9a-f]{12}$ ]]; then
+            echo "⏭️  Skipping update for container $container_id (image ID only)"
+            continue
+        fi
+
+        docker pull "$image" > /dev/null 2>&1
+        latest_image_id=$(docker inspect --format='{{.Id}}' "$image")
+
+        if [ "$current_image_id" != "$latest_image_id" ]; then
+            container_name=$(docker inspect --format='{{.Name}}' "$container_id" | cut -c2-)
+            echo "🚧 Updating container $container_name..."
+
+            docker stop "$container_id" > /dev/null
+            docker rm "$container_id" > /dev/null
+            docker run -d --name "$container_name" "$image"
+            echo "✅ Updated: $container_name"
+        fi
+    done <<< "$containers"
+    echo "🔁 Update process complete."
+}
+
+# Main loop
+while true; do
+    show_menu
+    read choice
+    case $choice in
+        1) check_outdated ;;
+        2) update_containers ;;
+        3) clear; echo "👋 Exiting Docker Container Tools."; exit 0 ;;
+        *) clear; echo "❌ Invalid option. Try again." ;;
+    esac
+    echo ""
+done
+
